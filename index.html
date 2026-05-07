@@ -11,15 +11,6 @@
   <meta property="og:url" content="https://entrenaconsultingsst-web.github.io/pausas-sst/">
   <meta property="og:type" content="website">
 
-</head>
-<body>
-
-<h1>PAUSA ACTIVA</h1>
-
-<img src="img/preview.gif" alt="Preview" width="300" style="display:block; margin:0 auto;">
-
-</body>
-</html>
   <style>
     /* ============================================================
        RETO DE ENERGÍA ACTIVA — SPA
@@ -288,6 +279,10 @@
 </head>
 <body>
 
+<h1>PAUSA ACTIVA</h1>
+
+<img src="img/preview.gif" alt="Preview" width="300" style="display:block; margin:0 auto;">
+
 <div id="app">
 
   <!-- ── Cabecera ────────────────────────────────────────── -->
@@ -355,9 +350,6 @@
 </div>
 
 <script>
-  // ============================================================
-  // DATOS — Array de pausas activas (5 tipos reglamentados)
-  // ============================================================
   const PAUSES = [
     {
       id: 'estiramiento',
@@ -401,23 +393,18 @@
     }
   ];
 
-  // ============================================================
-  // CONSTANTES DEL JUEGO
-  // ============================================================
   const MAX_ENERGY  = 150;
   const MIN_ENERGY  = 0;
   const INIT_ENERGY = 100;
-  const TOTAL_SECS  = 3600; // 60 minutos
+  const TOTAL_SECS  = 3600;
 
-  // ============================================================
-  // ESTADO — cargado desde localStorage
-  // ============================================================
   function loadState() {
     try {
       const saved = localStorage.getItem('reto_energia_v2');
       if (saved) return JSON.parse(saved);
     } catch(e) {}
-    return { energia: INIT_ENERGY, lastReto: null, lastRetoTime: null };
+    // LINEA MODIFICADA: Ahora incluye timerSecs por defecto
+    return { energia: INIT_ENERGY, lastReto: null, lastRetoTime: null, timerSecs: TOTAL_SECS };
   }
 
   function saveState(s) {
@@ -425,15 +412,13 @@
   }
 
   let state          = loadState();
-  let timerSecs      = TOTAL_SECS;
+  // LINEA MODIFICADA: Inicializa desde el estado guardado
+  let timerSecs      = state.timerSecs;
   let timerRunning   = true;
   let fast           = false;
   let timerInterval  = null;
   let currentChallenge = null;
 
-  // ============================================================
-  // UTILIDADES
-  // ============================================================
   function formatTime(s) {
     const m   = Math.floor(s / 60);
     const sec = s % 60;
@@ -446,9 +431,6 @@
     return '#e74c3c';
   }
 
-  // ============================================================
-  // RENDER — Energía
-  // ============================================================
   function renderEnergy() {
     const pct = Math.min(100, Math.round((state.energia / MAX_ENERGY) * 100));
     document.getElementById('energy-display').textContent = state.energia;
@@ -456,44 +438,24 @@
     document.getElementById('energy-bar').style.width      = pct + '%';
     document.getElementById('energy-bar').style.background = energyColor(state.energia);
 
-    const hints = [
-      '💀 Energía crítica',
-      '⚠️ Energía baja',
-      '✅ Buen nivel',
-      '🔥 Energía alta',
-      '⚡ Máxima energía'
-    ];
-    const idx = state.energia < 20 ? 0
-              : state.energia < 50 ? 1
-              : state.energia < 90 ? 2
-              : state.energia < 130 ? 3 : 4;
-
-    document.getElementById('energy-hint').textContent =
-      hints[idx] + ` · ${state.energia}/${MAX_ENERGY} pts`;
+    const hints = ['💀 Energía crítica', '⚠️ Energía baja', '✅ Buen nivel', '🔥 Energía alta', '⚡ Máxima energía'];
+    const idx = state.energia < 20 ? 0 : state.energia < 50 ? 1 : state.energia < 90 ? 2 : state.energia < 130 ? 3 : 4;
+    document.getElementById('energy-hint').textContent = hints[idx] + ` · ${state.energia}/${MAX_ENERGY} pts`;
   }
 
-  // ============================================================
-  // RENDER — Último reto
-  // ============================================================
   function renderLastReto() {
     const bar = document.getElementById('last-reto-bar');
     if (!state.lastReto) { bar.classList.add('hidden'); return; }
-
     const p   = PAUSES.find(p => p.id === state.lastReto);
     let label = p ? `${p.icon} ${p.titulo}` : '—';
-
     if (state.lastRetoTime) {
       const ago = Math.round((Date.now() - state.lastRetoTime) / 60000);
       label += ` · hace ${ago < 1 ? 'menos de 1 min' : ago + ' min'}`;
     }
-
     document.getElementById('last-reto-text').textContent = label;
     bar.classList.remove('hidden');
   }
 
-  // ============================================================
-  // RENDER — HTML de tarjeta de reto
-  // ============================================================
   function buildChallengeHTML(p, showActions) {
     const actions = showActions
       ? `<div class="ch-actions">
@@ -501,126 +463,86 @@
            <button class="btn-danger"  onclick="responder('${p.id}',false)">❌ Omitir (−15 pts)</button>
          </div>`
       : '';
-
-    return `
-      <div class="ch-header">
-        <div class="ch-icon" style="background:${p.color};">${p.icon}</div>
-        <div>
-          <div class="ch-title">${p.titulo}</div>
-          <div class="ch-cat">${p.categoria}</div>
-        </div>
-      </div>
-      <div class="ch-desc">${p.desc}</div>
-      ${actions}`;
+    return `<div class="ch-header"><div class="ch-icon" style="background:${p.color};">${p.icon}</div><div><div class="ch-title">${p.titulo}</div><div class="ch-cat">${p.categoria}</div></div></div><div class="ch-desc">${p.desc}</div>${actions}`;
   }
 
-  // ============================================================
-  // RENDER — Catálogo completo
-  // ============================================================
   function renderCatalog() {
-    document.getElementById('challenges-list').innerHTML =
-      PAUSES.map(p => `
-        <div class="challenge-card" style="margin-bottom:10px;">
-          ${buildChallengeHTML(p, false)}
-        </div>`).join('');
+    document.getElementById('challenges-list').innerHTML = PAUSES.map(p => `<div class="challenge-card" style="margin-bottom:10px;">${buildChallengeHTML(p, false)}</div>`).join('');
   }
 
-  // ============================================================
-  // LÓGICA — Disparar reto al llegar a 0
-  // ============================================================
   function triggerChallenge() {
     const p = PAUSES[Math.floor(Math.random() * PAUSES.length)];
     currentChallenge = p;
-
-    const sec  = document.getElementById('active-challenge-section');
-    const card = document.getElementById('active-challenge-card');
-    sec.classList.remove('hidden');
-    card.innerHTML = buildChallengeHTML(p, true);
+    document.getElementById('active-challenge-section').classList.remove('hidden');
+    document.getElementById('active-challenge-card').innerHTML = buildChallengeHTML(p, true);
     showModal(p);
   }
 
-  // ============================================================
-  // MODAL
-  // ============================================================
   function showModal(p) {
     document.getElementById('modal-icon').textContent  = p.icon;
     document.getElementById('modal-title').textContent = `¡Pausa activa! · ${p.titulo}`;
     document.getElementById('modal-desc').textContent  = p.desc;
-    document.getElementById('modal-actions').innerHTML = `
-      <button class="btn-success" onclick="responder('${p.id}',true);closeModal()">✅ Completado (+10)</button>
-      <button class="btn-danger"  onclick="responder('${p.id}',false);closeModal()">❌ Omitir (−15)</button>
-      <button onclick="closeModal()">Ver después</button>`;
+    document.getElementById('modal-actions').innerHTML = `<button class="btn-success" onclick="responder('${p.id}',true);closeModal()">✅ Completado (+10)</button><button class="btn-danger"  onclick="responder('${p.id}',false);closeModal()">❌ Omitir (−15)</button><button onclick="closeModal()">Ver después</button>`;
     document.getElementById('modal-backdrop').classList.remove('hidden');
   }
 
-  function closeModal() {
-    document.getElementById('modal-backdrop').classList.add('hidden');
-  }
+  function closeModal() { document.getElementById('modal-backdrop').classList.add('hidden'); }
 
-  // ============================================================
-  // ACCIÓN — Responder al reto (completado / omitido)
-  // ============================================================
   window.responder = function(id, completado) {
     const delta = completado ? 10 : -15;
     state.energia    = Math.max(MIN_ENERGY, Math.min(MAX_ENERGY, state.energia + delta));
     state.lastReto   = id;
     state.lastRetoTime = Date.now();
+    state.timerSecs  = TOTAL_SECS; // Reinicia tiempo en el estado
     saveState(state);
-
     renderEnergy();
     renderLastReto();
-
     document.getElementById('active-challenge-section').classList.add('hidden');
     currentChallenge = null;
-
-    // Reiniciar temporizador tras responder
     timerSecs = TOTAL_SECS;
     updateTimer();
     closeModal();
   };
 
-  // ============================================================
-  // TEMPORIZADOR
-  // ============================================================
   function updateTimer() {
     document.getElementById('timer-display').textContent = formatTime(timerSecs);
-    document.getElementById('timer-display').style.color =
-      timerSecs < 300  ? '#e74c3c'
-    : timerSecs < 900  ? 'var(--naranja)'
-    : 'var(--azul)';
+    document.getElementById('timer-display').style.color = timerSecs < 300  ? '#e74c3c' : timerSecs < 900  ? 'var(--naranja)' : 'var(--azul)';
   }
 
   function tick() {
     if (!timerRunning) return;
     const step = fast ? 10 : 1;
     timerSecs  = Math.max(0, timerSecs - step);
+    
+    // LINEA MODIFICADA: Sincroniza y guarda el tiempo cada segundo
+    state.timerSecs = timerSecs;
+    saveState(state);
+    
     updateTimer();
-
     if (timerSecs === 0) {
       fast = false;
       document.getElementById('btn-fast').textContent = '⚡ ×10';
       triggerChallenge();
-      timerSecs = TOTAL_SECS; // reinicia tras disparar
+      timerSecs = TOTAL_SECS;
     }
   }
 
   timerInterval = setInterval(tick, 1000);
 
-  // ── Controles del temporizador ──────────────────────────
   document.getElementById('btn-pause-timer').addEventListener('click', function() {
     timerRunning = !timerRunning;
     this.textContent = timerRunning ? '⏸ Pausar' : '▶ Reanudar';
-    document.getElementById('timer-sub').textContent =
-      timerRunning ? 'Temporizador activo' : 'En pausa';
+    document.getElementById('timer-sub').textContent = timerRunning ? 'Temporizador activo' : 'En pausa';
   });
 
   document.getElementById('btn-reset-timer').addEventListener('click', function() {
-    timerSecs    = TOTAL_SECS;
-    timerRunning = true;
-    fast         = false;
+    timerSecs = TOTAL_SECS;
+    state.timerSecs = TOTAL_SECS;
+    saveState(state);
+    timerRunning = true; fast = false;
     document.getElementById('btn-pause-timer').textContent = '⏸ Pausar';
-    document.getElementById('btn-fast').textContent        = '⚡ ×10';
-    document.getElementById('timer-sub').textContent       = 'Temporizador activo';
+    document.getElementById('btn-fast').textContent = '⚡ ×10';
+    document.getElementById('timer-sub').textContent = 'Temporizador activo';
     updateTimer();
   });
 
@@ -629,25 +551,20 @@
     this.textContent = fast ? '⚡ ×1 (mas rapido)' : '⚡ ×10';
   });
 
-  // ── Reinicio completo del juego ─────────────────────────
   document.getElementById('btn-reset-game').addEventListener('click', function() {
     if (confirm('¿Reiniciar toda la energía y el historial?')) {
-      state = { energia: INIT_ENERGY, lastReto: null, lastRetoTime: null };
+      state = { energia: INIT_ENERGY, lastReto: null, lastRetoTime: null, timerSecs: TOTAL_SECS };
       saveState(state);
+      timerSecs = TOTAL_SECS;
       renderEnergy();
       renderLastReto();
+      updateTimer();
       document.getElementById('active-challenge-section').classList.add('hidden');
     }
   });
 
-  // ── Cerrar modal al hacer clic fuera ───────────────────
-  document.getElementById('modal-backdrop').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-  });
+  document.getElementById('modal-backdrop').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 
-  // ============================================================
-  // INICIALIZACIÓN
-  // ============================================================
   renderEnergy();
   renderLastReto();
   renderCatalog();
